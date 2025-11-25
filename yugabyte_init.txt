@@ -1,0 +1,34 @@
+      docker ps
+
+`http://localhost:7000`
+
+docker exec -it yugabyte bin/ysqlsh
+
+-- 1. 创建一个新的数据库
+CREATE DATABASE my_first_db;
+
+-- 2. 连接到你刚创建的数据库
+\c my_first_db;
+
+-- 3. 创建一个简单的表
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    department VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+-- 4. 插入一些数据
+INSERT INTO employees (id, name, department, salary) VALUES
+(1, 'Alice', 'Engineering', 90000.00),
+(2, 'Bob', 'Marketing', 75000.00),
+(3, 'Charlie', 'Engineering', 95000.00);
+
+-- 5. 查询所有数据
+SELECT * FROM employees;
+
+-- 6. 查询工程部门的员工
+SELECT name, salary FROM employees WHERE department = 'Engineering';
+
+-- 7. 退出 ysqlsh
+\q
