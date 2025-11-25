@@ -8,4 +8,17 @@
     "DB_USER": "yugabyte",
     "DB_PASSWORD": "yugabyte"
   }
+
+}
+##########
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    
+    "DB_URL": "jdbc:postgresql://<YOUR_YUGABYTE_HOST>:<PORT>/<DATABASE_NAME>?sslmode=require",
+    "DB_USER": "<YOUR_USERNAME>",
+    "DB_PASSWORD": "<YOUR_PASSWORD>"
+  }
 }
