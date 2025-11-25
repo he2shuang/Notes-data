@@ -1,0 +1,107 @@
+package com.yugabyte.function;
+
+import com.microsoft.azure.functions.*;
+import com.microsoft.azure.functions.annotation.AuthorizationLevel;
+import com.microsoft.azure.functions.annotation.FunctionName;
+import com.microsoft.azure.functions.annotation.HttpTrigger;
+
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+// 引入我们刚刚添加的 Gson 库
+import com.google.gson.Gson;
+
+// --- 新的数据模型类 ---
+// 用于存放我们从数据库元数据中获取的通用信息
+class DbInfo {
+    private String dbProductName;
+    private String dbProductVersion;
+    private String driverName;
+    private List<String> tableNames;
+
+    public DbInfo(String dbProductName, String dbProductVersion, String driverName, List<String> tableNames) {
+        this.dbProductName = dbProductName;
+        this.dbProductVersion = dbProductVersion;
+        this.driverName = driverName;
+        this.tableNames = tableNames;
+    }
+
+    // Getters for Gson serialization
+    public String getDbProductName() { return dbProductName; }
+    public String getDbProductVersion() { return dbProductVersion; }
+    public String getDriverName() { return driverName; }
+    public List<String> getTableNames() { return tableNames; }
+}
+
+
+public class Function {
+    
+    @FunctionName("YugaDbTest")
+    public HttpResponseMessage run(
+            @HttpTrigger(
+                name = "req",
+                methods = {HttpMethod.GET, HttpMethod.POST},
+                authLevel = AuthorizationLevel.ANONYMOUS)
+                HttpRequestMessage<Optional<String>> request,
+            final ExecutionContext context) {
+
+        context.getLogger().info("Java HTTP trigger to check database connectivity and fetch metadata.");
+
+        final String dbUrl = System.getenv("DB_URL");
+        final String dbUser = System.getenv("DB_USER");
+        final String dbPassword = System.getenv("DB_PASSWORD");
+        
+        DbInfo dbInfo;
+
+        try (Connection connection = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
+            
+            // 1. 获取数据库的元数据对象
+            // 这个对象包含了关于数据库本身的大量信息
+            DatabaseMetaData metaData = connection.getMetaData();
+
+            // 2. 获取数据库基本信息
+            String productName = metaData.getDatabaseProductName();
+            String productVersion = metaData.getDatabaseProductVersion();
+            String driverName = metaData.getDriverName();
+            
+            // 3. 创建一个列表，用于存放所有表的名称
+            List<String> tableNames = new ArrayList<>();
+            
+            // 4. 从元数据中查询所有的表
+            // getTables 参数: (catalog, schemaPattern, tableNamePattern, types)
+            // null, null, "%", new String[]{"TABLE"} 表示查询所有类型的 schema 下的所有表
+            ResultSet tablesResultSet = metaData.getTables(null, null, "%", new String[]{"TABLE"});
+            
+            // 5. 遍历结果集，提取表名
+            while (tablesResultSet.next()) {
+                // 表名通常在名为 "TABLE_NAME" 的列中
+                String tableName = tablesResultSet.getString("TABLE_NAME");
+                tableNames.add(tableName);
+            }
+
+            // 6. 将所有获取到的信息封装到 DbInfo 对象中
+            dbInfo = new DbInfo(productName, productVersion, driverName, tableNames);
+            
+        } catch (Exception e) {
+            context.getLogger().severe("Database connection or metadata query failed. Error: " + e.getMessage());
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
+                          .body("Database operation failed: " + e.getMessage())
+                          .build();
+        }
+
+        // 7. 使用 Gson 将 DbInfo 对象转换为 JSON 格式的字符串
+        Gson gson = new Gson();
+        String jsonResponse = gson.toJson(dbInfo);
+
+        // 8. 构建带有 JSON 内容和正确 Content-Type 的 HTTP 响应
+        return request.createResponseBuilder(HttpStatus.OK)
+                      .header("Content-Type", "application/json") // 告诉浏览器返回的是 JSON
+                      .body(jsonResponse)
+                      .build();
+    }
+}
