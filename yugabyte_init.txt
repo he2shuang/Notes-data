@@ -32,3 +32,78 @@ SELECT name, salary FROM employees WHERE department = 'Engineering';
 
 -- 7. 退出 ysqlsh
 \q
+
+=============================================
+
+-- 创建数据库
+CREATE DATABASE event_db;
+
+-- 使用数据库
+\c event_db;
+
+-- 创建 通知历史表 (notification_history)
+CREATE TABLE notification_history (
+    notification_id UUID PRIMARY KEY,
+    apikey varchar NOT NULL,
+    request_result jsonb NOT NULL,
+    confirmation_result jsonb,
+    status varchar NOT NULL
+);
+
+-- 创建 事件数据表 (event_data)
+CREATE TABLE event_data (
+    event_id UUID PRIMARY KEY,
+    dealer_code varchar NOT NULL,
+    employee_code varchar NOT NULL,
+    apikey varchar NOT NULL,
+    management_information jsonb,
+    information jsonb,
+    upsert_date TIMESTAMP
+);
+
+
+-- 插入数据到 notification_history 表
+-- 插入一条“未完成”的记录
+INSERT INTO notification_history (notification_id, request_result, status)
+VALUES (
+    gen_random_uuid(),
+    '{"url": "https://api.example.com/notify", "payload": {"message": "New event occurred"}}',
+    'Unfinished'
+);
+
+-- 插入一条“已完成”的记录
+INSERT INTO notification_history (notification_id, request_result, confirmation_result, status)
+VALUES (
+    gen_random_uuid(),
+    '{"url": "https://api.example.com/notify", "payload": {"message": "Old event processed"}}',
+    '{"response_code": 200, "body": "OK"}',
+    'Finished'
+);
+
+
+-- 插入数据到 event_data 表
+INSERT INTO event_data (event_id, dealer_code, employee_code, apikey, management_information, information, upsert_date)
+VALUES (
+    gen_random_uuid(),
+    'DLR-001',
+    'EMP-12345',
+    'xyz-abc-123-456',
+    '{"source": "web_portal", "user": "admin"}',
+    '{"customer_id": "CUST-987", "action": "login"}',
+    NOW()
+);
+
+INSERT INTO event_data (event_id, dealer_code, employee_code, apikey, information, upsert_date)
+VALUES (
+    gen_random_uuid(),
+    'DLR-002',
+    'EMP-67890',
+    'pqr-stu-789-012',
+    '{"customer_id": "CUST-654", "action": "purchase", "item_id": "ITEM-A"}',
+    NOW()
+);
+
+
+-- 验证数据是否成功插入表中
+SELECT * FROM notification_history;
+SELECT * FROM event_data;
