@@ -89,13 +89,23 @@ public class CrudHandler {
             while (rs.next()) {
                 Map<String, Object> row = new HashMap<>();
                 for (int i = 1; i <= columns; ++i) {
-                    // 对于 jsonb 类型，getObject 可能会返回 PGobject，其 getValue() 方法返回 json 字符串
-                    Object obj = rs.getObject(i);
-                    if (obj instanceof org.postgresql.util.PGobject && "jsonb".equalsIgnoreCase(((org.postgresql.util.PGobject) obj).getType())) {
-                        // 使用 Gson 将 json 字符串解析回 Java 对象，使输出更美观
-                        row.put(md.getColumnName(i), gson.fromJson(((org.postgresql.util.PGobject) obj).getValue(), Object.class));
+                    String columnName = md.getColumnName(i);
+                    String columnTypeName = md.getColumnTypeName(i); 
+
+                    if ("jsonb".equalsIgnoreCase(columnTypeName) || "json".equalsIgnoreCase(columnTypeName)) {
+                        // 对于 json/jsonb 类型，最安全的方式是将其作为字符串获取
+                        String jsonString = rs.getString(i);
+                        
+                        // 避免 jsonString 为 null 时 gson 抛出异常
+                        if (jsonString != null) {
+                            // 使用 Gson 将 json 字符串解析回 Java 对象
+                            row.put(columnName, gson.fromJson(jsonString, Object.class));
+                        } else {
+                            row.put(columnName, null);
+                        }
                     } else {
-                        row.put(md.getColumnName(i), obj);
+                        // 对于所有其他类型，getObject() 仍然是最佳选择
+                        row.put(columnName, rs.getObject(i));
                     }
                 }
                 resultList.add(row);
