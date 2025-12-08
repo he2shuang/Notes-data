@@ -28,7 +28,11 @@ import com.yugabyte.function.DatabaseMetadataService.ColumnMetadata;
  */
 public class CrudHandler {
 
-    private static final Gson gson = new Gson();
+    final static String TARGET_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
+
+    private static final Gson gson = new GsonBuilder()
+        .setDateFormat(TARGET_DATE_FORMAT)
+        .create();
 
     /**
      * 处理 HTTP GET 请求，用于查询和检索记录。
