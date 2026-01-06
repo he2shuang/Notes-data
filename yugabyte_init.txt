@@ -35,3 +35,10 @@ SELECT name, salary FROM employees WHERE department = 'Engineering';
 
 =============================================
 
+因为你没在 @HttpTrigger(methods=...) 里允许的那个方法（比如 PUT）会被写进 function.json 的 httpTrigger.methods 里当作“路由匹配条件”。
+
+请求进来时，Functions Host 用 ASP.NET Core 路由做匹配：  
+
+路径匹配上了，但 HTTP method 不在允许列表 → 路由约束判定“不匹配”
+于是这个函数对应的 endpoint 不会被选中，等同于“没有任何函数能处理这个请求”
+最终路由系统找不到可用 endpoint，就按“未命中路由”的结果返回 404 Not Found（而不是进入函数后再返回错误）。
