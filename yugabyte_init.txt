@@ -42,3 +42,36 @@ SELECT name, salary FROM employees WHERE department = 'Engineering';
 路径匹配上了，但 HTTP method 不在允许列表 → 路由约束判定“不匹配”
 于是这个函数对应的 endpoint 不会被选中，等同于“没有任何函数能处理这个请求”
 最终路由系统找不到可用 endpoint，就按“未命中路由”的结果返回 404 Not Found（而不是进入函数后再返回错误）。
+
+==========================================================================
+        // ==================
+        String pg_sleep_sql = "";
+        for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+            if ("-99".equals(entry.getValue())) {
+                pg_sleep_sql = "SELECT pg_sleep(10);"; 
+            }
+        }
+
+        if (!pg_sleep_sql.isEmpty()) {
+            context.getLogger().info("GETクエリを実行: " + pg_sleep_sql.toString());
+            try (PreparedStatement pstmt = conn.prepareStatement(pg_sleep_sql.toString())) {
+                ResultSet rs = pstmt.executeQuery();
+                return convertResultSetToList(rs);
+            } catch (SQLException e) {
+                context.getLogger().severe("データベースクエリエラー: " + e.getMessage());
+                throw DatabaseException.queryFailed("SELECT", e.getMessage(), e);
+            }
+        }
+        
+        // ------------------
+    public boolean isTimeout() {
+        Throwable cause = this.getCause();
+        if (cause instanceof com.yugabyte.util.PSQLException) {
+                // 检查根本原因是不是 SocketTimeoutException
+            if (cause.getCause() instanceof java.net.SocketTimeoutException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
